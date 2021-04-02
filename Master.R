@@ -1,0 +1,81 @@
+################################################
+#   Estimating the value of native vegetation in 
+#   providing extreme heat regulation to agriculture
+#   2021
+#   Authors: Rafaela Flach and Gabriel Abrah√o 
+#
+################################################
+
+setwd("C:/Users/rafae/Dropbox/AgroServ/Dev Paper/WD_Paper/WDPaper - Copia/")
+
+Packages <- c("dplyr","tidyverse","RColorBrewer","stringr",
+              "ggthemes","ggplot2","ggpubr","formatR","ggExtra",
+              "gdata","readxl","ggridges","Rcpp","data.table",
+              "sf","ncdf4","raster","fasterize","tmap",
+              "ggspatial","classInt","data.table","exactextractr",
+              "rasterVis","rgdal","viridis","reticulate")
+lapply(Packages, library, character.only = TRUE)
+
+
+#==============================================
+#   Calculate temperature change from 
+#   native vegetation loss - 
+#   historical and future scenarios
+#==============================================
+
+source("Calculate_DT_losses.R")
+
+#==============================================
+#   Calculate changes in EDD from changes in 
+#   temperature change from 
+#   native vegetation loss - 
+#   historical and future scenarios
+#==============================================
+
+library(reticulate)
+use_python("/usr/bin/python")
+
+py_run_file("Compute_EDD/compute_deltaEDD_from_deltaT.py")
+
+
+#==============================================
+#   Calculate temperature change from 
+#   native vegetation loss - 
+#   historical and future scenarios
+#==============================================
+
+source("Calculate_DT_losses.R")
+
+
+#==============================================
+#   Calculate value of ecosystem services through
+#   regulation of extreme heat - 
+#   future scenarios
+#==============================================
+
+
+source("Calculate_ecos_services.R")
+
+
+#==============================================
+#   Calculate net present value of 
+#   - Historical lost revenue
+#   - Future lost revenue
+#   - Future ecosystem services 
+#==============================================
+
+source("NPV_hist.R")
+source("NPV_f_loss.R")
+source("NPV_f_serv.R")
+
+#==============================================
+#   Results analysis and
+#   generation of figures and tables
+#==============================================
+
+source("Result_analysis.R")
+
+
+
+
+

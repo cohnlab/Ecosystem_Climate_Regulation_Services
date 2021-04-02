@@ -1,17 +1,11 @@
 ################################################
 ################################################
-#
-#   Title: Analysis codes of manuscript:
-#           By reducing exposure of crops to extreme heat, 
-#           ecosystem conservation can aid agricultural development in Brazil
-#   Date: 19 Mar 2021
-#   Authors: Gabriel Abrahão and Rafaela Flach
+# Result analysis and generation of figures 
+# and tables
 #
 ################################################
 ################################################
 
-
-setwd("C:/Users/rafae/Dropbox/AgroServ/Dev Paper/WD_Paper/WDPaper - Copia/")
 
 Packages <- c("dplyr","tidyverse","RColorBrewer","stringr",
               "ggthemes","ggplot2","ggpubr","formatR","ggExtra",
@@ -26,9 +20,9 @@ lapply(Packages, library, character.only = TRUE)
 #   Input Data - 1
 #==============================================
 
-in.dir <- "C:/Users/rafae/Dropbox/AgroServ/Dev Paper/WD_Paper/WDPaper - Copia/Input_Data/"
-fig.dir <- "C:/Users/rafae/Dropbox/AgroServ/Dev Paper/WD_Paper/WDPaper - Copia/Figures_new/"
-deltaEDD.folder <- "C:/Users/rafae/Dropbox/AgroServ/Dev Paper/WD_Paper/WDPaper - Copia/Output/DEDD/"
+in.dir <- "Input_Data/"
+fig.dir <- "Figures/"
+deltaEDD.folder <- "Output/DEDD/"
 
 # Gridcells
 CRshp <- st_read(paste0(in.dir,"GIS/BrazilCR.shp"))
@@ -51,7 +45,12 @@ CRmun <- read.csv(paste0(in.dir,"GIS/CRmun.csv"))
 #==============================================
 ## Deforestation and agricultural area data (2000-2012)
 # Forest area from Mapbiomas (m^2)
-mapbiomas <- read.csv(paste0(in.dir,"MAPBIOMAS/mapbiomas_processed.csv"))
+mapbiomas <- read.csv("Input_Data/MAPBIOMAS/reduced_mapbiomas_6.csv") %>%
+  dplyr::select(-nid,-perimeter,-.geo,-system.index,-area,-areatot) %>%
+  pivot_longer(area1985:newcroparea2019,names_to = "Parameter",values_to = "val") %>%
+  mutate(Par = substr(Parameter,1,nchar(Parameter)-4),
+         Year = paste0("X",substr(Parameter,nchar(Parameter)-3,nchar(Parameter)))) %>%
+  dplyr::select(-Parameter)
 
 # Yield for soy, from Dias et al (2016) (ton/ha)
 # Base yield
@@ -113,85 +112,67 @@ npvfb.0.03 <- read.csv("Output/CRVp0.03_B.csv",row.names = 1)
 #==============================================
 
 #----------------------------------------------------
-#   Historical DeltaEDDs
+#   Table 2
+#   Historical summary table
 #----------------------------------------------------
 
-or <- colorRampPalette(colors = c("#FFFFFF","#ffd830","#ffa830","#d87848","#904860"))
+subpars <- c("NVloss","dy","areasoyp")
+pars <- c("areasoyp","NVloss","DT_luc","dEDD","dy","DT_L","CRVn")
+parnames <- c("Soy area (%)","Native Vegetation loss (%)","Temperature change (C)",
+              "Change in EDDs (degree days)","Change in productivity (%)",
+              "Extreme heat regulation value - Local effect (2005$ ha-1 yr-1)",              
+              "Extreme heat regulation value (2005$ ha-1 yr-1)")
 
-patt <- c("_L_","_NL_","2012DT_luc")
-patt.names <- c("Local","Non-local","Total biogeophysical")
+newtable <-  DT.his %>%
+  right_join(finaltab.his) %>% left_join(biomes) %>% 
+  filter(Year == "X2012",areasoyp>0.01) %>%
+  mutate(DT_L = DT_L*CRVn/DT_luc) %>%
+  dplyr::select(Year,ID,CD_Bioma,pars) %>% 
+  pivot_longer(NVloss:CRVn,names_to="par",values_to="val") %>%
+  group_by(Year,CD_Bioma,par) %>%
+  summarise(meanv = mean(val, na.rm = TRUE), 
+            sdv = sd(val, na.rm = TRUE),
+            meana = mean(areasoyp, na.rm = TRUE)*100, 
+            sda = sd(areasoyp, na.rm = TRUE)*100,
+            wm = weighted.mean(val,areasoyp,na.rm=TRUE)) %>% ungroup %>% 
+  dplyr::select(-Year) %>%
+  mutate(CD_Bioma = plyr::mapvalues(CD_Bioma,c(1,3),c("Amazon","Cerrado"))) 
+
+newtable2 <-  DT.his %>%
+  right_join(finaltab.his) %>%
+  filter(Year == "X2012",areasoyp>0.01) %>%
+  mutate(DT_L = DT_L*CRVn/DT_luc) %>%
+  dplyr::select(Year,ID,pars) %>%
+  pivot_longer(NVloss:CRVn,names_to="par",values_to="val") %>%
+  group_by(Year,par) %>%
+  summarise(meanv = mean(val, na.rm = TRUE), 
+            sdv = sd(val, na.rm = TRUE),
+            meana = mean(areasoyp, na.rm = TRUE)*100, 
+            sda = sd(areasoyp, na.rm = TRUE)*100,
+            wm = weighted.mean(val,areasoyp,na.rm=TRUE)) %>% ungroup %>% 
+  dplyr::select(-Year) %>%
+  mutate(CD_Bioma = "Total")
+newtable <- rbind(newtable,newtable2)
+
+newtable[which(newtable$par %in% subpars),c("meanv","sdv","wm")] <- 
+  100*newtable[which(newtable$par %in% subpars),c("meanv","sdv","wm")]
+
+newtable <- newtable %>%
+  mutate(Parameter = plyr::mapvalues(par,pars,parnames),
+         Mean = paste0(round(meanv,digits = 2)," (",round(sdv,digits=2),")"),
+         `Weighted Mean` = round(wm,digits = 2),
+         `Soy area` = paste0(round(meana,digits = 2)," (",round(sda,digits=2),")")) %>% 
+  dplyr::select(CD_Bioma,Parameter,Mean,`Weighted Mean`,`Soy area`) %>%
+  pivot_wider(names_from = CD_Bioma,values_from = Mean:`Soy area`,
+              names_glue = "{CD_Bioma} {.value}") 
 
 
-ncs <- unlist(lapply(patt,function(x) list.files(deltaEDD.folder,pattern=x)))
-plottable <- brick(lapply(ncs, function(x) raster(paste0(deltaEDD.folder,x),var="edd")))
+write.csv(newtable,paste0(fig.dir,"Table_2.csv"))
 
-f4M <- levelplot(plottable, 
-                 margin = FALSE,
-                 col.regions=or(210),                   
-                 at=c(-Inf,seq(0, 40, len=201),Inf),
-                 names.attr=patt.names, 
-                 scales = list(x=list(draw=FALSE),
-                               y=list(draw=FALSE)),
-                 layout = c(3, 1),
-                 xlab = "",
-                 ylab = "",
-                 main = "Changes in EDD - 2012 (degree days)") + 
-  layer(sp.polygons(mask))
-
-png(paste0(fig.dir,"Hist_EDD.png"),width = 15,height = 7,units = "cm",res=360)
-print(f4M)
-dev.off()
-
-
-#----------------------------------------------------
-#   All Future EDDs
-#----------------------------------------------------
-
-or <- colorRampPalette(colors = c("#FFFFFF","#ffd830","#ffa830","#d87848","#904860"))
-
-scenarios <- c("IDC3","IDC3NoFC","IDC3ZD")
-scen.names <- c("Baseline","No Forest Code","Zero Deforestation")
-
-
-patt <- lapply(scenarios, function(x) 
-  c(paste0("2050",x,"DT_luc_"),"2050DT_ghg",paste0("2050",x,"DT_t_")))
-
-titles <- c("Biogeophysical","Biogeochemical","Total")
-
-f <- list()
-for (i in 1:length(scenarios))
-{
-  ncs <- unlist(lapply(patt[[i]],function(x) list.files(deltaEDD.folder,pattern=x)))
-  plottable <- brick(lapply(ncs, function(x) raster(paste0(deltaEDD.folder,x),var="edd")))
-  
-  f[[i]] <- levelplot(plottable, 
-                      margin = FALSE,
-                      col.regions=or(210),                   
-                      at=c(-Inf,seq(0, 200, len=201),Inf),
-                      names.attr=titles, 
-                      scales = list(x=list(draw=FALSE),
-                                    y=list(draw=FALSE)),
-                      layout = c(3, 1),
-                      xlab = "",
-                      ylab = "",
-                      main = paste0("Change in soy exposure to extreme \n degree days - ",scen.names[i]," scenario")) + 
-    layer(sp.polygons(mask))
-  
-  png(paste0(fig.dir,paste0("Figure_EDD_panel",scen.names[i],".png")),width = 15,height = 7,units = "cm",res=360)
-  print(f[[i]])
-  dev.off()
-  
-}
-
-panel <- ggarrange(plotlist=f,ncol=1,nrow=3)
-
-png(paste0(fig.dir,paste0("Figure_EDD_panel.png")),width = 18,height = 20,units = "cm",res=360)
-print(panel)
-dev.off()
 
 #----------------------------------------------------
-#   Historical map panel =  
-#       soy area, dLUC, dT, dEDD, CRV
+#   Figure 3 and 4
+#   Historical map panel 
 #----------------------------------------------------
 
 or <- colorRampPalette(colors = c("#FFFFFF","#ffd830","#ffa830","#d87848","#904860"))
@@ -296,197 +277,67 @@ for (i in 3:4)
 panel1 <- ggarrange(plotlist=f1,ncol=2,nrow=2,labels = "AUTO")
 panel2 <- ggarrange(plotlist=f2,ncol=2,nrow=2,labels = "AUTO")
 
-png(paste0(fig.dir,paste0("Figure_hist_panel1.png")),width = 20,height = 20,units = "cm",res=360)
+png(paste0(fig.dir,paste0("Figure_3.png")),width = 20,height = 20,units = "cm",res=360)
 print(panel1)
 dev.off()
 
-png(paste0(fig.dir,paste0("Figure_hist_panel2.png")),width = 20,height = 20,units = "cm",res=360)
+png(paste0(fig.dir,paste0("Figure_4.png")),width = 20,height = 20,units = "cm",res=360)
 print(panel2)
 dev.off()
 
+
+
 #----------------------------------------------------
-#   Future CRV maps
+#   Figure 5
+#   All Future EDDs
 #----------------------------------------------------
 
+or <- colorRampPalette(colors = c("#FFFFFF","#ffd830","#ffa830","#d87848","#904860"))
 
-param <- c("areasoyp","NVloss","CRVl","CRVl2")
-param.names <- c("Soy area (%)", "Vegetation loss (%)",
-                 "Extreme heat regulation value - \n Biogeophysical (2005$)",
-                 "Extreme heat regulation value - \n Biogeochemical + physical (2005$)")
-
-newtable <-  DT.scen %>%
-  right_join(finaltab.scen %>% mutate(Year = as.numeric(substr(Year,2,5)))) %>%
-  filter(Year == 2050) %>%
-  dplyr::select(ID,Scenario,NVloss,areasoyp,CRVl,CRVl2)
+scenarios <- c("IDC3","IDC3NoFC","IDC3ZD")
+scen.names <- c("Baseline","No Forest Code","Zero Deforestation")
 
 
-orn <- colorRampPalette(colors = c("#fff7fb","#ece7f2","#d0d1e6","#a6bddb",
-                                   "#74a9cf","#3690c0","#0570b0","#045a8d",
-                                   "#023858"))
+patt <- lapply(scenarios, function(x) 
+  c(paste0("2050",x,"DT_luc_"),"2050DT_ghg",paste0("2050",x,"DT_t_")))
 
-panel <- list()
+titles <- c("Biogeophysical","Biogeochemical","Total")
+
+f <- list()
 for (i in 1:length(scenarios))
 {
-  shp <- left_join(CRshp, newtable %>% filter(Scenario == scenarios[[i]]))
-  f <- list()
-  for (j in 1:2)
-  {
-    
-    ncs <- rasterize(shp,nctemplate,param[j])
-    
-    f[[j]] <- levelplot(ncs,
-                        margin = FALSE,
-                        col.regions=or(210),
-                        names.attr=param[j],
-                        xlab = "",
-                        ylab = "",
-                        scales = list(x=list(draw=FALSE),
-                                      y=list(draw=FALSE)),
-                        main = list(label=paste0(param.names[j]),
-                                    cex=0.85)) +
-      layer(sp.polygons(mask))
-  }
+  ncs <- unlist(lapply(patt[[i]],function(x) list.files(deltaEDD.folder,pattern=x)))
+  plottable <- brick(lapply(ncs, function(x) raster(paste0(deltaEDD.folder,x),var="edd")))
   
-  for (j in 3:4)
-  {
-    
-    ncs <- rasterize(shp,nctemplate,param[j])
-    
-    f[[j]] <- levelplot(ncs,
-                        margin = FALSE,
-                        col.regions=orn(210),
-                        names.attr=param[j],
-                        xlab = "",
-                        ylab = "",
-                        at=c(-Inf,seq(0, 1000, len=201),Inf),
-                        scales = list(x=list(draw=FALSE),
-                                      y=list(draw=FALSE)),
-                        main = list(label=paste0(param.names[j]),
-                                    cex=0.75)) +
-      layer(sp.polygons(mask))
-  }
-  panel[[i]] <- annotate_figure(ggarrange(plotlist=f,nrow=2,ncol=2),
-                                top = scen.names[i])
-  png(paste0(fig.dir,paste0("Figure_scen_panel",scen.names[i],".png")),width = 15,height = 15,units = "cm",res=360)
-  print(panel[[i]])
-  dev.off()
+  f[[i]] <- levelplot(plottable, 
+                      margin = FALSE,
+                      col.regions=or(210),                   
+                      at=c(-Inf,seq(0, 200, len=201),Inf),
+                      names.attr=titles, 
+                      scales = list(x=list(draw=FALSE),
+                                    y=list(draw=FALSE)),
+                      layout = c(3, 1),
+                      xlab = "",
+                      ylab = "",
+                      main = paste0("Change in soy exposure to extreme \n degree days - ",scen.names[i]," scenario")) + 
+    layer(sp.polygons(mask))
+  
+
 }
-
-
-#----------------------------------------------------
-#   Historical summary table
-#----------------------------------------------------
-
-subpars <- c("NVloss","dy","areasoyp")
-pars <- c("areasoyp","NVloss","DT_luc","dEDD","dy","DT_L","CRVn")
-parnames <- c("Soy area (%)","Native Vegetation loss (%)","Temperature change (C)",
-              "Change in EDDs (degree days)","Change in productivity (%)",
-              "Extreme heat regulation value - Local effect (2005$ ha-1 yr-1)",              
-              "Extreme heat regulation value (2005$ ha-1 yr-1)")
-
-newtable <-  DT.his %>%
-  right_join(finaltab.his) %>% left_join(biomes) %>% 
-  filter(Year == "X2012",areasoyp>0.01) %>%
-  mutate(DT_L = DT_L*CRVn/DT_luc) %>%
-  dplyr::select(Year,ID,CD_Bioma,pars) %>% 
-  pivot_longer(NVloss:CRVn,names_to="par",values_to="val") %>%
-  group_by(Year,CD_Bioma,par) %>%
-  summarise(meanv = mean(val, na.rm = TRUE), 
-            sdv = sd(val, na.rm = TRUE),
-            meana = mean(areasoyp, na.rm = TRUE)*100, 
-            sda = sd(areasoyp, na.rm = TRUE)*100,
-            wm = weighted.mean(val,areasoyp,na.rm=TRUE)) %>% ungroup %>% 
-  dplyr::select(-Year) %>%
-  mutate(CD_Bioma = plyr::mapvalues(CD_Bioma,c(1,3),c("Amazon","Cerrado"))) 
-
-newtable2 <-  DT.his %>%
-  right_join(finaltab.his) %>%
-  filter(Year == "X2012",areasoyp>0.01) %>%
-  mutate(DT_L = DT_L*CRVn/DT_luc) %>%
-  dplyr::select(Year,ID,pars) %>%
-  pivot_longer(NVloss:CRVn,names_to="par",values_to="val") %>%
-  group_by(Year,par) %>%
-  summarise(meanv = mean(val, na.rm = TRUE), 
-            sdv = sd(val, na.rm = TRUE),
-            meana = mean(areasoyp, na.rm = TRUE)*100, 
-            sda = sd(areasoyp, na.rm = TRUE)*100,
-            wm = weighted.mean(val,areasoyp,na.rm=TRUE)) %>% ungroup %>% 
-  dplyr::select(-Year) %>%
-  mutate(CD_Bioma = "Total")
-newtable <- rbind(newtable,newtable2)
-
-newtable[which(newtable$par %in% subpars),c("meanv","sdv","wm")] <- 
-  100*newtable[which(newtable$par %in% subpars),c("meanv","sdv","wm")]
-
-newtable <- newtable %>%
-  mutate(Parameter = plyr::mapvalues(par,pars,parnames),
-         Mean = paste0(round(meanv,digits = 2)," (",round(sdv,digits=2),")"),
-         `Weighted Mean` = round(wm,digits = 2),
-         `Soy area` = paste0(round(meana,digits = 2)," (",round(sda,digits=2),")")) %>% 
-  dplyr::select(CD_Bioma,Parameter,Mean,`Weighted Mean`,`Soy area`) %>%
-  pivot_wider(names_from = CD_Bioma,values_from = Mean:`Soy area`,
-              names_glue = "{CD_Bioma} {.value}") 
-
-
-write.csv(newtable,paste0(fig.dir,"Table_2_.csv"))
-
-#----------------------------------------------------
-#  CRV versus forest and soy area
-#----------------------------------------------------
-
-plottab <- finaltab.his
-
-lims.i <- seq(0,95,by = 5)/100
-lims.f <- seq(5,100,by = 5)/100
-
-list1 <- data.frame(Mean_CRV = unlist(lapply(1:20, function(x) 
-  (plottab %>% filter(Forarea > lims.i[x]) %>% filter(Forarea < lims.f[x]))[,"CRVn"] %>% mean(na.rm=TRUE))),
-  Forest_area = seq(5,100,by = 5),Par = "Native vegetation area") %>%
-  filter(Forest_area <100)
-
-f3Ma <- annotate_figure(ggscatter(list1,"Forest_area","Mean_CRV",
-                                  size = 2.5,
-                                  color = "#FF5733",
-                                  xlab = "Native vegetation area in gridcell (%)",
-                                  ylab = "Extreme heat regulation value (2005$ ha-1 yr-1)") + 
-                          font("xlab", size = 11)+
-                          font("ylab", size = 11),
-                        bottom = "") 
-
-
-lims.i <- seq(0,95,by = 5)/100
-lims.f <- seq(5,100,by = 5)/100
-
-list2 <- data.frame(Mean_CRV = unlist(lapply(1:20, function(x) 
-  (plottab %>% filter(areasoyp > lims.i[x]) %>% 
-     filter(areasoyp < lims.f[x]))[,"CRV"] %>% mean(na.rm=TRUE))),
-  Forest_area = seq(5,100,by = 5),
-  Par = "Soy area",
-  count = unlist(lapply(1:20, function(x) 
-    nrow(plottab %>% filter(areasoyp > lims.i[x]) %>% 
-           filter(areasoyp < lims.f[x]))))) %>%
-  drop_na()
-
-f3Mb <- annotate_figure(ggscatter(list2,"Forest_area","Mean_CRV",
-                                  size = 2.5,
-                                  color = "#FF5733",
-                                  xlab = "Soy area in gridcell (%)",
-                                  ylab = "Extreme heat regulation value (2005$ ha-1 yr-1)") + 
-                          font("xlab", size = 11)+
-                          font("ylab", size = 11),
-                        bottom = "") 
-
-
-f3M <- ggarrange(f3Ma,f3Mb)
-
-png(paste0(fig.dir,"Figure_CRVvsforest_soy.png"),width = 20,height = 12,units = "cm",res=360)
-print(f3M)
+i <- 1
+png(paste0(fig.dir,paste0("Figure_5.png")),width = 15,height = 7,units = "cm",res=360)
+print(f[[i]])
 dev.off()
 
+panel <- ggarrange(plotlist=f,ncol=1,nrow=3)
 
+png(paste0(fig.dir,paste0("Figure_S9.png")),width = 18,height = 20,units = "cm",res=360)
+print(panel)
+dev.off()
 
 #----------------------------------------------------
-#  Future CRV over time
+#   Figure 6
+#  Future lost revenue and ecosystem services over time
 #----------------------------------------------------
 
 
@@ -571,86 +422,14 @@ f5B <- ggplot(plottableb,
 
 newf5 <- ggarrange(f5A,f5B,common.legend = TRUE,legend = "bottom",nrow=2)
 
-png(paste0(fig.dir,"Figure_future.png"),width = 20,height = 20,units = "cm",res=360)
+png(paste0(fig.dir,"Figure_6.png"),width = 20,height = 20,units = "cm",res=360)
 print(newf5)
 dev.off()
 
 
 #----------------------------------------------------
-#   Benchmarking - Historical + Future A
-#----------------------------------------------------
-npvh <- npvh.0.1[,-1] 
-npvfa <- npvfa.0.1
-
-
-# Land prices
-lpdata <- lpindata %>% left_join(.,munic2cr, by = "Geocodigo") %>% 
-  filter(lpscenario == "lp_hist",var == "Media_A_IGPDI",year == 2012) %>% 
-  mutate(lp_hist = value) %>%
-  dplyr::select(ID,area,lp_hist) %>% drop_na() 
-
-
-# process - historical
-
-npvh <- npvh %>% dplyr::select(ID,CRVl2_NPV) %>% 
-  rename(npvh = CRVl2_NPV)
-npvfa <- npvfa %>% 
-  dplyr::select(ID,Scenario,CRVl2_NPV) %>% 
-  rename(npvfa = CRVl2_NPV)
-
-npv <- npvfa %>% left_join(npvh) %>% left_join(lpdata) 
-
-
-npv <- npv %>%
-  mutate(land_prices = lp_hist,
-         perc_lp_h = 100*npvh/lp_hist,
-         perc_lp_hfa = 100*npvfa/lp_hist,
-         perc_lp_t = 100*(npvfa+npvh)/lp_hist)
-
-npv1 <- npv
-# Merge IDC3 scenario with shapefile for plotting
-npvaggshp <- npv %>% filter(Scenario == "IDC3") %>% 
-  dplyr::select(ID,land_prices,perc_lp_h,perc_lp_hfa,perc_lp_t) %>% 
-  unique() %>%
-  left_join(baseshp, by = "ID") %>%
-  st_as_sf()
-
-
-scenarios <-  c("land_prices","perc_lp_h","perc_lp_hfa","perc_lp_t") 
-scen.names <- c("Agricultural land prices (2005$)",
-                "Historical extreme heat reg. value \n vs. land prices",
-                "Future extreme heat reg. value \n vs. land prices",
-                "Historical + future extreme heat reg. value \n vs. land prices")
-
-bounds <- list(c(0,6000),c(0,150),c(0,150),c(0,150))
-
-f <- list()
-for (i in 1:length(scenarios))
-{
-  ncs <- rasterize(npvaggshp,nctemplate,scenarios[i])
-  
-  f[[i]] <- levelplot(ncs, 
-                      margin = FALSE,
-                      col.regions=rev(magma(22)),                   
-                      xlab = "",
-                      ylab = "",
-                      at=c(-Inf,seq(bounds[[i]][1], bounds[[i]][2], len=20),Inf),
-                      scales = list(x=list(draw=FALSE),
-                                    y=list(draw=FALSE)),
-                      main = scen.names[i]) + 
-    layer(sp.polygons(mask))
-}
-
-panel <- ggarrange(plotlist=f,ncol=2,nrow=2)
-
-
-png(paste0(fig.dir,"Figura_Benchmarking_h_fa.png"),width = 20,height = 20,units = "cm",res=360)
-print(panel)
-dev.off()
-
-
-#----------------------------------------------------
-#   future NPV - table
+#   Table 3
+#   Future NPV 
 #----------------------------------------------------
 npvfa <- npvfa.0.1 %>% rename(npvfa = CRVl2_NPV) %>% dplyr::select(ID,Scenario,npvfa,soyarea)
 npvfb <- npvfb.0.1 %>% rename(npvfb = CRVl2_NPV) %>% dplyr::select(ID,Scenario,npvfb,Forarea)
@@ -670,7 +449,7 @@ npv2 <- npvfb %>%
   mutate(Scenario = factor(Scenario,levels = c("IDC3","IDC3NoFC","IDC3ZD"),
                            labels = c("Baseline","No Forest Code","Zero Deforestation")))
 
-write.csv(npv,paste0(fig.dir,"tablenpv01.csv"))
+write.csv(npv,paste0(fig.dir,"Table_3.csv"))
 
 
 npvfa <- npvfa.0.03 %>% rename(npvfa = CRVl2_NPV) %>% dplyr::select(ID,Scenario,npvfa,soyarea)
@@ -684,9 +463,11 @@ npv <- left_join(npvfa,npvfb) %>%
   ungroup %>%
   mutate(Scenario = factor(Scenario,levels = c("IDC3","IDC3NoFC","IDC3ZD"),
                            labels = c("Baseline","No Forest Code","Zero Deforestation")))
-write.csv(npv,paste0(fig.dir,"tablenpv003.csv"))
+write.csv(npv,paste0(fig.dir,"Table_3_dr003.csv"))
+
 #----------------------------------------------------
-#   Benchmarking - Future B
+#   Figure 7
+#   Benchmarking 
 #----------------------------------------------------
 #2 should have forest land prices, 
 #heat reg/forest land price, 
@@ -761,36 +542,290 @@ for (i in 1:length(scenarios))
 panel <- ggarrange(plotlist=f,ncol=2,nrow=2,labels="AUTO")
 
 
-png(paste0(fig.dir,"Figure_Benchmarking_fb.png"),width = 20,height = 20,units = "cm",res=360)
+png(paste0(fig.dir,"Figure_7.png"),width = 20,height = 20,units = "cm",res=360)
 print(panel)
 dev.off()
 
-#----------------------------------------------------
-#   statistics Benchmarking
-#----------------------------------------------------
-npv1.1 <- npv1 %>% group_by(Scenario) %>%
-  summarise(count_lp_h = 100*mean(as.numeric(perc_lp_h>100),na.rm=TRUE),
-            count_lp_hfa= 100*mean(as.numeric(perc_lp_hfa>100),na.rm=TRUE),
-            count_lp_t = 100*mean(as.numeric(perc_lp_t>100),na.rm=TRUE),
-            mean_lp_h = mean(perc_lp_h,na.rm=TRUE),
-            mean_lp_hfa= mean(perc_lp_hfa,na.rm=TRUE),
-            mean_lp_t = mean(perc_lp_t,na.rm=TRUE)) %>%
-  ungroup() %>% mutate(across(2:7, round, 0)) %>%
-  as.data.frame() 
-
-npv2.1 <- npv2 %>% group_by(Scenario) %>%
-  summarise(count_fb_lp = 100*mean(as.numeric(perc_fb_lp>100),na.rm=TRUE),
-            count_fb_cp = 100*mean(as.numeric(perc_fb_cp>100),na.rm=TRUE),
-            count_fbcp_lp = 100*mean(as.numeric(perc_fbcp_lp>100),na.rm=TRUE),
-            mean_fb_lp = mean(perc_fb_lp,na.rm=TRUE),
-            mean_fb_cp = mean(perc_fb_cp,na.rm=TRUE),
-            mean_fbcp_lp = mean(perc_fbcp_lp,na.rm=TRUE)) %>%
-  ungroup() %>% mutate(across(2:7, round, 0)) %>%
-  as.data.frame() 
 
 
-write.csv(npv1.1,paste0(fig.dir,"Table_Benchmarking.csv"), row.names = F)
-
-write.csv(npv2.1,paste0(fig.dir,"Table_Benchmarking2.csv"), row.names = F)
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#==============================================
+#   Output - Supplementary figures
+#==============================================
+
+#------------------------------
+# Historical deforestation
+#------------------------------
+
+def <- mapbiomas %>% 
+  filter(Par == "area") %>% 
+  group_by(Year) %>%
+  summarise(sum = sum(val)/10000000000) %>% ungroup %>%
+  mutate(Year = as.numeric(substr(Year,2,5)))
+
+fig.s2 <- annotate_figure(ggline(def,"Year","sum",
+                                 ylab = bquote('Native vegetarion area (million ha)')),
+                          bottom = text_grob("Data source: Mapbiomas"))
+
+png(paste0(fig.dir,"SM/def_his.png"),width = 16,height = 10,units = "cm",res=360)
+plot(fig.s2)
+dev.off()
+
+#------------------------------
+# Historical soy areas
+#------------------------------
+
+soyarea <- data.frame(Year = as.character(2000:2012), 
+                      area = cellStats(areasoy,stat="sum")/1000000)
+
+fig.s3 <- annotate_figure(ggline(soyarea,"Year","area",
+                                 ylab = "Soy crop area (million ha)"),
+                          bottom = text_grob("Data source: Dias et al. (2016)"))
+
+png(paste0(fig.dir,"SM/soy_his.png"),width = 16,height = 10,units = "cm",res=360)
+plot(fig.s3)
+dev.off()
+
+#------------------------------
+# Historical productivity
+#------------------------------
+
+Y0f <- rasterize(left_join(CRshp,Y0),nctemplate,"Y0")
+
+org <- colorRampPalette(colors = brewer.pal(9,"Greens"))
+
+fig.s4 <- levelplot(Y0f, 
+                    margin = FALSE,
+                    col.regions=org(100),                   
+                    at=seq(0, 3.5,by = 0.2),
+                    main = "Baseline productivity (ton/ha)") +
+  layer(sp.polygons(mask))
+png(paste0(fig.dir,"SM/base_prod.png"),width = 15,height = 7,units = "cm",res=360)
+print(fig.s4)
+dev.off()
+
+#------------------------------
+# Projected deforestation
+#------------------------------
+
+f.def <- do.call(rbind,globiom) %>%left_join (biomes) %>%
+  filter(Parameter == "NatVeg",Year > 2016,CD_Bioma %in% c(1,3)) %>%
+  group_by(Scen,Year) %>% 
+  summarize(natveg = sum(Val)/1000) %>% ungroup()
+
+fig.s5 <- annotate_figure(ggline(f.def,"Year","natveg",
+                                 color = "Scen",
+                                 ylab = "Native vegetation (mi ha)",
+                                 palette = wes_palette("Rushmore")[2:5],
+                                 point.size = 0),
+                          bottom = "Source: Globiom-BR")
+png(paste0(fig.dir,"SM/def_scen.png"),width = 16,height = 10,units = "cm",res=360)
+plot(fig.s5)
+dev.off()
+
+#------------------------------
+# Projected soy areas
+#------------------------------
+
+f.soy <- do.call(rbind,globiom) %>%
+  filter(Parameter == "Soya",Year > 2016) %>%
+  group_by(Scen,Year) %>% 
+  summarize(soy = sum(Val)/1000) %>% ungroup()
+
+fig.s6 <- ggline(f.soy,"Year","soy",
+                 color = "Scen",
+                 size = 1.2,
+                 ylab = "Projected soy area (mi ha)",
+                 palette = wes_palette("Rushmore")[2:5],
+                 point.size = 0)
+png(paste0(fig.dir,"SM/soy_scen.png"),width = 16,height = 10,units = "cm",res=360)
+plot(fig.s6)
+dev.off()
+
+#------------------------------
+# Projected productivity
+#------------------------------
+
+yd <- data.frame(Years = seq(2015,2050,by=5), shifter = yd.shifter) %>%
+  filter(Years > 2016)
+
+fig.s7 <- ggline(yd,"Years","shifter",
+                 size = 1.2,
+                 ylab = "Multiplying factor from baseline yield",
+                 point.size = 0.5)
+
+png(paste0(fig.dir,"SM/scen_prod.png"),width = 16,height = 10,units = "cm",res=360)
+plot(fig.s7)
+dev.off()
+
+
+#------------------------------
+#  Loss revenue versus forest and soy area
+#------------------------------
+
+plottab <- finaltab.his
+
+lims.i <- seq(0,95,by = 5)/100
+lims.f <- seq(5,100,by = 5)/100
+
+list1 <- data.frame(Mean_CRV = unlist(lapply(1:20, function(x) 
+  (plottab %>% filter(Forarea > lims.i[x]) %>% filter(Forarea < lims.f[x]))[,"CRVn"] %>% mean(na.rm=TRUE))),
+  Forest_area = seq(5,100,by = 5),Par = "Native vegetation area") %>%
+  filter(Forest_area <100)
+
+f3Ma <- annotate_figure(ggscatter(list1,"Forest_area","Mean_CRV",
+                                  size = 2.5,
+                                  color = "#FF5733",
+                                  xlab = "Native vegetation area in gridcell (%)",
+                                  ylab = "Extreme heat regulation value (2005$ ha-1 yr-1)") + 
+                          font("xlab", size = 11)+
+                          font("ylab", size = 11),
+                        bottom = "") 
+
+
+lims.i <- seq(0,95,by = 5)/100
+lims.f <- seq(5,100,by = 5)/100
+
+list2 <- data.frame(Mean_CRV = unlist(lapply(1:20, function(x) 
+  (plottab %>% filter(areasoyp > lims.i[x]) %>% 
+     filter(areasoyp < lims.f[x]))[,"CRVn"] %>% mean(na.rm=TRUE))),
+  Forest_area = seq(5,100,by = 5),
+  Par = "Soy area",
+  count = unlist(lapply(1:20, function(x) 
+    nrow(plottab %>% filter(areasoyp > lims.i[x]) %>% 
+           filter(areasoyp < lims.f[x]))))) %>%
+  drop_na()
+
+f3Mb <- annotate_figure(ggscatter(list2,"Forest_area","Mean_CRV",
+                                  size = 2.5,
+                                  color = "#FF5733",
+                                  xlab = "Soy area in gridcell (%)",
+                                  ylab = "Extreme heat regulation value (2005$ ha-1 yr-1)") + 
+                          font("xlab", size = 11)+
+                          font("ylab", size = 11),
+                        bottom = "") 
+
+
+f3M <- ggarrange(f3Ma,f3Mb)
+
+png(paste0(fig.dir,"SM/Figure_forest_soy.png"),width = 20,height = 12,units = "cm",res=360)
+print(f3M)
+dev.off()
+
+
+
+
+
+#------------------------------
+#   Future lost revenue maps
+#------------------------------
+
+
+param <- c("areasoyp","NVloss","CRVl","CRVl2")
+param.names <- c("Soy area (%)", "Vegetation loss (%)",
+                 "Extreme heat regulation value - \n Biogeophysical (2005$)",
+                 "Extreme heat regulation value - \n Biogeochemical + physical (2005$)")
+
+newtable <-  DT.scen %>%
+  right_join(finaltab.scen %>% mutate(Year = as.numeric(substr(Year,2,5)))) %>%
+  filter(Year == 2050) %>%
+  dplyr::select(ID,Scenario,NVloss,areasoyp,CRVl,CRVl2)
+
+
+orn <- colorRampPalette(colors = c("#fff7fb","#ece7f2","#d0d1e6","#a6bddb",
+                                   "#74a9cf","#3690c0","#0570b0","#045a8d",
+                                   "#023858"))
+
+panel <- list()
+for (i in 1:length(scenarios))
+{
+  shp <- left_join(CRshp, newtable %>% filter(Scenario == scenarios[[i]]))
+  f <- list()
+  for (j in 1:2)
+  {
+    
+    ncs <- rasterize(shp,nctemplate,param[j])
+    
+    f[[j]] <- levelplot(ncs,
+                        margin = FALSE,
+                        col.regions=or(210),
+                        names.attr=param[j],
+                        xlab = "",
+                        ylab = "",
+                        scales = list(x=list(draw=FALSE),
+                                      y=list(draw=FALSE)),
+                        main = list(label=paste0(param.names[j]),
+                                    cex=0.85)) +
+      layer(sp.polygons(mask))
+  }
+  
+  for (j in 3:4)
+  {
+    
+    ncs <- rasterize(shp,nctemplate,param[j])
+    
+    f[[j]] <- levelplot(ncs,
+                        margin = FALSE,
+                        col.regions=orn(210),
+                        names.attr=param[j],
+                        xlab = "",
+                        ylab = "",
+                        at=c(-Inf,seq(0, 1000, len=201),Inf),
+                        scales = list(x=list(draw=FALSE),
+                                      y=list(draw=FALSE)),
+                        main = list(label=paste0(param.names[j]),
+                                    cex=0.75)) +
+      layer(sp.polygons(mask))
+  }
+  panel[[i]] <- annotate_figure(ggarrange(plotlist=f,nrow=2,ncol=2),
+                                top = scen.names[i])
+  png(paste0(fig.dir,paste0("SM/Figure_scen_panel",scen.names[i],".png")),width = 15,height = 15,units = "cm",res=360)
+  print(panel[[i]])
+  dev.off()
+}
+
+
+#------------------------------
+#   Historical deltaEDDs
+#------------------------------
+
+or <- colorRampPalette(colors = c("#FFFFFF","#ffd830","#ffa830","#d87848","#904860"))
+
+patt <- c("_L_","_NL_","2012DT_luc")
+patt.names <- c("Local","Non-local","Total biogeophysical")
+
+
+ncs <- unlist(lapply(patt,function(x) list.files(deltaEDD.folder,pattern=x)))
+plottable <- brick(lapply(ncs, function(x) raster(paste0(deltaEDD.folder,x),var="edd")))
+
+f4M <- levelplot(plottable, 
+                 margin = FALSE,
+                 col.regions=or(210),                   
+                 at=c(-Inf,seq(0, 40, len=201),Inf),
+                 names.attr=patt.names, 
+                 scales = list(x=list(draw=FALSE),
+                               y=list(draw=FALSE)),
+                 layout = c(3, 1),
+                 xlab = "",
+                 ylab = "",
+                 main = "Changes in EDD - 2012 (degree days)") + 
+  layer(sp.polygons(mask))
+
+png(paste0(fig.dir,"SM/Hist_EDD.png"),width = 15,height = 7,units = "cm",res=360)
+print(f4M)
+dev.off()

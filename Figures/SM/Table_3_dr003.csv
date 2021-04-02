@@ -1,0 +1,7 @@
+"","Scenario","par","mean","weighted.mean"
+"1","Baseline","npvfa",3101.03205646734,3581.51911860727
+"2","Baseline","npvfb",710.220529010386,863.511429602657
+"3","No Forest Code","npvfa",3198.65784397511,3687.93530742567
+"4","No Forest Code","npvfb",753.083086392093,903.372802039206
+"5","Zero Deforestation","npvfa",2881.36456659117,3308.0893399917
+"6","Zero Deforestation","npvfb",651.673896980891,796.93997884499
