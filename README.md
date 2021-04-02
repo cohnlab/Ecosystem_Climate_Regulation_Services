@@ -23,13 +23,18 @@ This is the master R script that runs all the auxiliary scripts in the Aux_codes
 
 ### Folders
 
-* Aux_codes
+* Aux_codes/
 
+This folder contains the R ad Python scripts used to estimate changes in temperature resulting from land use and land cover change; the changes in extreme heat exposure to soybean production, through estimation of changes extreme degree days; the value of loss revenue due to increased exposure to extreme heat in the historical period and future scenarios; and the ecosystem services provided by native vegetation in the future scenarios.
 
-* Figures
+* Figures/
 
-* Input_Data
+This folder contains the tables and figures that present the results from this analysis. The figure and table titles correspond to the order they are presented in the manuscript.
 
-* Output
+* Input_Data/
 
-* 
+The input data used in the analysis of extreme heat regulation services in Brazilian Cerrado and Amazon ecosystems. Better detail on the input data is presented in the file Input_Data/READMEinput.md
+
+* Output/
+
+Results obtained in the analysis, used to produce the figures and tables presented in the Figures/ folder.
