@@ -9,6 +9,16 @@ The codes presented here process data on native vegetation, past climate, future
 
 ## Structure
 
+1. Codes
 
+- Result_analysis.R. 
+
+This is the main file in this repository that replicates the generation of tables and figures presented in the manuscript.
+
+- Master.R. 
+
+
+
+2. Files
 
 ## 
