@@ -1,8 +1,3 @@
----
-title: "Input_Data"
-output: html_document
-bibliography: MyCollection.bib
----
 
 ## Input_Data
 
