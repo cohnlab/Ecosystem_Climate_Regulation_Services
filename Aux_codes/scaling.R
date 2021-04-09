@@ -95,11 +95,11 @@ test2 <- ggerrorplot(summaries2, x = "bufsize", y = "Val",
                      position = position_dodge(0.6))
 
 
-png("scale_res_lineplot.png",width = 25,height = 12,units = "cm",res=360)
+png(paste0(in.dir,"scale_res_lineplot.png"),width = 25,height = 12,units = "cm",res=360)
 print(plot1)
 dev.off()
 
-png("scale_res_errorplot.png",width = 25,height = 12,units = "cm",res=360)
+png(paste0(in.dir,"scale_res_errorplot.png"),width = 25,height = 12,units = "cm",res=360)
 print(test2)
 dev.off()
 
@@ -185,6 +185,6 @@ p2 <- ggplot(coef.km, aes(x=Halo_Radii, y= Coefficient)) +
 
 coefs <- ggarrange(p2,p1,ncol=2)
 
-png("Coefficients.png",width = 20,height = 9,units = "cm",res=360)
+png(paste0(in.dir,"Coefficients.png"),width = 20,height = 9,units = "cm",res=360)
 print(coefs)
 dev.off()
