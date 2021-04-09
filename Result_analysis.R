@@ -9,7 +9,7 @@
 
 Packages <- c("dplyr","tidyverse","RColorBrewer","stringr",
               "ggthemes","ggplot2","ggpubr","formatR","ggExtra",
-              "gdata","readxl","ggridges","Rcpp","data.table",
+              "gdata","readxl","Rcpp","data.table",
               "sf","ncdf4","raster","fasterize","tmap","gridExtra",
               "ggspatial","classInt","data.table","exactextractr",
               "rasterVis","rgdal","viridis","reticulate", "wesanderson")
@@ -449,8 +449,6 @@ npv2 <- npvfb %>%
   mutate(Scenario = factor(Scenario,levels = c("IDC3","IDC3NoFC","IDC3ZD"),
                            labels = c("Baseline","No Forest Code","Zero Deforestation")))
 
-write.csv(npv,paste0(fig.dir,"Table_3.csv"))
-
 
 npvfa <- npvfa.0.03 %>% rename(npvfa = CRVl2_NPV) %>% dplyr::select(ID,Scenario,npvfa,soyarea)
 npvfb <- npvfb.0.03 %>% rename(npvfb = CRVl2_NPV) %>% dplyr::select(ID,Scenario,npvfb,soyarea)
@@ -726,78 +724,6 @@ f3M <- ggarrange(f3Ma,f3Mb)
 png(paste0(fig.dir,"SM/Figure_forest_soy.png"),width = 20,height = 12,units = "cm",res=360)
 print(f3M)
 dev.off()
-
-
-
-
-
-#------------------------------
-#   Future lost revenue maps
-#------------------------------
-
-
-param <- c("areasoyp","NVloss","CRVl","CRVl2")
-param.names <- c("Soy area (%)", "Vegetation loss (%)",
-                 "Extreme heat regulation value - \n Biogeophysical (2005$)",
-                 "Extreme heat regulation value - \n Biogeochemical + physical (2005$)")
-
-newtable <-  DT.scen %>%
-  right_join(finaltab.scen %>% mutate(Year = as.numeric(substr(Year,2,5)))) %>%
-  filter(Year == 2050) %>%
-  dplyr::select(ID,Scenario,NVloss,areasoyp,CRVl,CRVl2)
-
-
-orn <- colorRampPalette(colors = c("#fff7fb","#ece7f2","#d0d1e6","#a6bddb",
-                                   "#74a9cf","#3690c0","#0570b0","#045a8d",
-                                   "#023858"))
-
-panel <- list()
-for (i in 1:length(scenarios))
-{
-  shp <- left_join(CRshp, newtable %>% filter(Scenario == scenarios[[i]]))
-  f <- list()
-  for (j in 1:2)
-  {
-    
-    ncs <- rasterize(shp,nctemplate,param[j])
-    
-    f[[j]] <- levelplot(ncs,
-                        margin = FALSE,
-                        col.regions=or(210),
-                        names.attr=param[j],
-                        xlab = "",
-                        ylab = "",
-                        scales = list(x=list(draw=FALSE),
-                                      y=list(draw=FALSE)),
-                        main = list(label=paste0(param.names[j]),
-                                    cex=0.85)) +
-      layer(sp.polygons(mask))
-  }
-  
-  for (j in 3:4)
-  {
-    
-    ncs <- rasterize(shp,nctemplate,param[j])
-    
-    f[[j]] <- levelplot(ncs,
-                        margin = FALSE,
-                        col.regions=orn(210),
-                        names.attr=param[j],
-                        xlab = "",
-                        ylab = "",
-                        at=c(-Inf,seq(0, 1000, len=201),Inf),
-                        scales = list(x=list(draw=FALSE),
-                                      y=list(draw=FALSE)),
-                        main = list(label=paste0(param.names[j]),
-                                    cex=0.75)) +
-      layer(sp.polygons(mask))
-  }
-  panel[[i]] <- annotate_figure(ggarrange(plotlist=f,nrow=2,ncol=2),
-                                top = scen.names[i])
-  png(paste0(fig.dir,paste0("SM/Figure_scen_panel",scen.names[i],".png")),width = 15,height = 15,units = "cm",res=360)
-  print(panel[[i]])
-  dev.off()
-}
 
 
 #------------------------------
