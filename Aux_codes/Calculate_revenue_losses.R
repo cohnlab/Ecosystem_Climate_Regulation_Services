@@ -47,7 +47,7 @@ mapbiomas <- read.csv("Input_Data/MAPBIOMAS/reduced_mapbiomas_6.csv") %>%
 
 
 # Cropland area for soy, from Dias et al (2016) (ha)
-areasoy <- brick(paste0(in.dir,"Dias/LUSOYBEAN20002012.nc"),var="landuse")
+areasoy <- read.csv(paste0(in.dir,"Dias/prepross_soyarea_peryear.csv"))
 Y0 <- read.csv(paste0(in.dir,"Dias/Y0.csv"))
 
 # Deforestation and agricultural area projections from Globiom-BR 2015-2050 
@@ -88,12 +88,7 @@ prices.s.his <- data.frame(Year = years,
 
 # Soy area
 soyarea <- areasoy
-names(soyarea) <- paste0("X",c(2000:2012))
-soyarea <- soyarea[[which(names(soyarea) %in% years)]]
-soyarea <- data.frame(CRshp$ID, exact_extract(soyarea,CRshp,"sum"))
-colnames(soyarea) <- c("ID",years)
-soyarea <- soyarea %>%
-  pivot_longer(X2005:X2012,names_to = "Year",values_to = "soyarea")
+
 
 # Forest loss and forest area
 #   Floss is in km2

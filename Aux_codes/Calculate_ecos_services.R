@@ -55,9 +55,6 @@ mapbiomas <- read.csv("Input_Data/MAPBIOMAS/reduced_mapbiomas_6.csv") %>%
 yieldsoy <- brick(paste0(in.dir,"Dias/YIELDSOYBEAN20002012.nc"),var="Yield")
 yieldsoy <- reclassify(yieldsoy, c(0, NA))
 
-# Cropland area for soy, from Dias et al (2016) (ha)
-areasoy <- brick(paste0(in.dir,"Dias/LUSOYBEAN20002012.nc"),var="landuse")
-Y0 <- read.csv(paste0(in.dir,"Dias/Y0.csv"))
 
 # Deforestation and agricultural area projections from Globiom-BR 2015-2050 
 # 1000ha for "NatVeg" (native vegetarion area) 

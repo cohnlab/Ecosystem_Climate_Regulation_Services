@@ -65,7 +65,7 @@ Y0s <- Y0s %>% pivot_longer(X2015:X2050, values_to = "Y0", names_to = "Year")
 
 
 # Cropland area for soy, from Dias et al (2016) (ha)
-areasoy <- brick(paste0(in.dir,"Dias/LUSOYBEAN20002012.nc"),var="landuse")
+areasoy <- read.csv(paste0(in.dir,"Input_Data/Dias/prepross_soyarea_accum.csv"))
 
 # Deforestation and agricultural area projections from Globiom-BR 2015-2050 
 # 1000ha for "NatVeg" (native vegetarion area) 
@@ -588,8 +588,7 @@ dev.off()
 # Historical soy areas
 #------------------------------
 
-soyarea <- data.frame(Year = as.character(2000:2012), 
-                      area = cellStats(areasoy,stat="sum")/1000000)
+soyarea <- areasoy
 
 fig.s3 <- annotate_figure(ggline(soyarea,"Year","area",
                                  ylab = "Soy crop area (million ha)"),

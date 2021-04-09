@@ -50,7 +50,7 @@ mapbiomas <- read.csv("Input_Data/MAPBIOMAS/reduced_mapbiomas_6.csv") %>%
   dplyr::select(-Parameter)
 
 # Cropland area for soy, from Dias et al (2016) (ha)
-areasoy <- brick(paste0(in.dir,"Dias/LUSOYBEAN20002012.nc"),var="landuse")
+soyarea <- read.csv("Input_Data/Dias/prepross_soyarea.csv",row.names = 1)
 Y0 <- read.csv(paste0(in.dir,"Dias/Y0.csv"))
 
 # Deforestation and agricultural area projections from Globiom-BR 2015-2050 
@@ -103,11 +103,6 @@ nvloss15 <- data.frame(ID = natveg$ID,
 
 nvloss15[which(is.na(nvloss15$NVloss15)),"NVloss15"] <- 0
 
-
-soyarea <- areasoy
-names(soyarea) <- paste0("X",c(2000:2012))
-soyarea <- soyarea[[which(names(soyarea) == "X2012")]]
-soyarea <- data.frame(ID = CRshp$ID, soyarea = exact_extract(soyarea,CRshp,"sum"))
 
 sareap <- CRcsv %>%  
   left_join(soyarea)  %>%
