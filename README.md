@@ -4,7 +4,13 @@
 
 This repository contains the data and codes for replication of the results presented in the manuscript entitled *'Conserving the Cerrado and Amazon biomes of Brazil protects the soy economy from damaging warming'*, submitted to the journal World Development.
 
-The codes presented here process data on native vegetation, past climate, future climate projections, agriculture, and future projections of land use and land cover. This data is used to estimate the role of native vegetation in Brazil in providing regulation of extreme heat for neighboring soybean production. 
+The scripts presented here process data on native vegetation, past climate, future climate projections, agriculture, and future projections of land use and land cover. This data is used to estimate the role of native vegetation in Brazil in providing regulation of extreme heat for neighboring soybean production. 
+
+The materials in this repository allow users to reproduce the results and figures appearing in the main text of the manuscript.
+
+To reproduce the figures appearing in the manuscript, it is necessary only to run the script Result_Analysis.R. To reproduce the methodology to generate the results presented in the paper, the script Master.R shows the order in which the several scripts for data analysis should be run, and the role of each of them.
+
+The main scripts are written in R, with the exception of the scripts in the folder "Aux_codes/Compute_EDD/". These python scripts are auxiliary to calculate changes in Extreme Degree Days, and are not used independently, as they called from within other R scripts.
 
 
 ## Main structure
