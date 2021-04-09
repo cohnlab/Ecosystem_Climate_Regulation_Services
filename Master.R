@@ -2,11 +2,9 @@
 #   Estimating the value of native vegetation in 
 #   providing extreme heat regulation to agriculture
 #   2021
-#   Authors: Rafaela Flach and Gabriel Abrah√o 
+#   Authors: Rafaela Flach and Gabriel Abrahao 
 #
 ################################################
-
-setwd("C:/Users/rafae/Dropbox/AgroServ/Dev Paper/WD_Paper/WDPaper - Copia/")
 
 Packages <- c("dplyr","tidyverse","RColorBrewer","stringr",
               "ggthemes","ggplot2","ggpubr","formatR","ggExtra",
@@ -23,7 +21,7 @@ lapply(Packages, library, character.only = TRUE)
 #   historical and future scenarios
 #==============================================
 
-source("Calculate_DT_losses.R")
+source("Aux_codes/Calculate_DT_losses.R")
 
 #==============================================
 #   Calculate changes in EDD from changes in 
@@ -44,7 +42,7 @@ py_run_file("Compute_EDD/compute_deltaEDD_from_deltaT.py")
 #   historical and future scenarios
 #==============================================
 
-source("Calculate_DT_losses.R")
+source("Aux_codes/Calculate_DT_losses.R")
 
 
 #==============================================
@@ -54,7 +52,7 @@ source("Calculate_DT_losses.R")
 #==============================================
 
 
-source("Calculate_ecos_services.R")
+source("Aux_codes/Calculate_ecos_services.R")
 
 
 #==============================================
@@ -64,9 +62,9 @@ source("Calculate_ecos_services.R")
 #   - Future ecosystem services 
 #==============================================
 
-source("NPV_hist.R")
-source("NPV_f_loss.R")
-source("NPV_f_serv.R")
+source("Aux_codes/NPV_hist.R")
+source("Aux_codes/NPV_f_loss.R")
+source("Aux_codes/NPV_f_serv.R")
 
 #==============================================
 #   Results analysis and
