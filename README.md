@@ -49,7 +49,7 @@ Results obtained in the analysis, used to produce the figures and tables present
 
 The repository with all codes and input data occupies around 6.9Gb. It can be downloaded in its entirety, or in parts.
 
-In case the figures are to be replicated
+In case the figures are to be replicated:
 * The script Result_Analysis.R, the folder Output/ and Figures/ are necessary to download
 * The script Result_Analysis.R needs to be run in R. 
 
