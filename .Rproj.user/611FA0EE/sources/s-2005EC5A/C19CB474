@@ -1,0 +1,24 @@
+{
+    "id": "C19CB474",
+    "path": "C:/Users/rafae/Dropbox/AgroServ/Dev Paper/WD_Paper/CRV_github/Forest_Climate_Regulation_Services/Aux_codes/Calculate_revenue_losses.R",
+    "project_path": "Aux_codes/Calculate_revenue_losses.R",
+    "type": "r_source",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1620338698145.0,
+    "source_on_save": false,
+    "relative_order": 4,
+    "properties": {
+        "cursorPosition": "49,0",
+        "scrollLine": "46"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1617996038,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1617996038,
+    "read_only": false,
+    "read_only_alternatives": []
+}

@@ -72,7 +72,6 @@ areasoy <- read.csv(paste0(in.dir,"Input_Data/Dias/prepross_soyarea_accum.csv"))
 # "CrpSoy" (cropland area) and "Soya" (soy area)
 # Nondimentional for cfrac 
 gl.scenarios <- c("IDC3","IDC3NoFC","IDC3ZD")
-
 globiom <- lapply(gl.scenarios, function(x) 
   read.csv(paste0(in.dir,"GLOBIOM-BR/Output_",x,".CSV"),
            col.names = c("Scenario","Class","Country","ID","Parameter","Year","Val")))
@@ -188,7 +187,7 @@ param2 <- c("areasoyp","dy","CRVn","loss")
 param.names2 <- c("Soy area \n (% of gridcell)", 
                   "Productivity loss due \n to extreme heat (%)",
                   "Lost soy revenue from ecosystem \n conversion in 2012 (2005$/ha)",
-                  "Total lost soy revenue from ecosystem \n conversion in 2012 (10\U00B3 2005$)")
+                  "Total lost soy revenue from ecosystem \n conversion in 2012 (million 2005$)")
 
 
 newtable1 <-  DT.his %>%
@@ -201,7 +200,7 @@ newtable2 <-  DT.his %>%
   filter(Year == "X2012") %>%
   mutate(dy = -100*dy,
          areasoyp = 100*areasoyp,
-         loss = dy*Y0*soyarea*0.001) %>%
+         loss = CRVn*soyarea*0.000001) %>%
   dplyr::select(Year,ID,param2) 
 
 shp <- left_join(CRshp, newtable1)
@@ -254,7 +253,7 @@ for (i in 1:2)
 orn <- colorRampPalette(colors = c("#fff7fb","#d0d1e6",
                                    "#74a9cf","#3690c0","#0570b0","#045a8d",
                                    "#023858"))
-bounds <- list(c(0,150),c(0,450))
+bounds <- list(c(0,150),c(0,4))
 for (i in 3:4)
 {
   ncs <- rasterize(shp,nctemplate,param2[i])
@@ -350,7 +349,7 @@ plottablea <- t.scen.a %>%
   filter(soyarea>0) %>%
   pivot_longer(CRVfa,names_to = "var",values_to = "value") %>%
   group_by(Year,Scenario,var) %>%
-  summarize(Sum = 0.000001*sum(value*soyarea, na.rm = TRUE),
+  summarize(Sum = 0.001*sum(value*soyarea, na.rm = TRUE),
             Weightedm = weighted.mean(value,soyarea,na.rm=TRUE),
             area = mean(soyarea)) %>% ungroup() %>%
   mutate(Year = as.numeric(substr(Year,2,5))) %>%
@@ -363,14 +362,14 @@ plottablea <- plottablea %>%
   mutate(Scenario = factor(Scenario,levels = c("IDC3","IDC3NoFC","IDC3ZD"),
                            labels = c("Baseline","No Forest Code","Zero Deforestation")),
          Par = factor(Par,levels = c("SumCRVfa","WeightedmCRVfa"),
-                      labels = c("Total lost soy value \n from ecosystem conversion \n (10 \U2079 2005$/year)",
+                      labels = c("Total lost soy value \n from ecosystem conversion \n (million 2005$/year)",
                                  "Lost soy value from \n ecosystem conversion \n (2005$/ha.year)")))
 
 plottableb <- t.scen.b %>% 
   filter(Forarea>0) %>%
   pivot_longer(CRVfb,names_to = "var",values_to = "value") %>%
   group_by(Year,Scenario,var) %>%
-  summarize(Sum = 0.000000001*sum(value*Forarea, na.rm = TRUE),
+  summarize(Sum = 0.000001*sum(value*Forarea, na.rm = TRUE),
             Weightedm = weighted.mean(value,Forarea,na.rm=TRUE),
             area = mean(Forarea)) %>% ungroup() %>%
   mutate(Year = as.numeric(substr(Year,2,5))) %>%
@@ -383,7 +382,7 @@ plottableb <- plottableb %>%
   mutate(Scenario = factor(Scenario,levels = c("IDC3","IDC3NoFC","IDC3ZD"),
                            labels = c("Baseline","No Forest Code","Zero Deforestation")),
          Par = factor(Par,levels = c("SumCRVfb","WeightedmCRVfb"),
-                      labels = c("Total value of protected ecosystems \n for soy sector  (10 \U2079 2005$/year)",
+                      labels = c("Total value of protected ecosystems \n for soy sector  (million 2005$/year)",
                                  "Value of protected ecosystems \n for soy sector  (2005$/ha.year)")))
 
 
